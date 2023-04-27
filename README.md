@@ -11,4 +11,5 @@
 - rename settings into metadata in db schema and api DataSet class
 - rewrite get_dataset() to use less single queries
 - replace all "id" columns with "somethingsomething_id" for better readability in db schema
-
+- linting
+- static code analysis
