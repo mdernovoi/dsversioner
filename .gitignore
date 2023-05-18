@@ -3,6 +3,8 @@
 secrets/*
 !secrets/.gitkeep
 
+testdata
+
 # JetBrains
 .idea/
 

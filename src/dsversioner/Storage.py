@@ -1,285 +1,306 @@
-from abc import ABC, abstractmethod
+import json
+import os
+import shutil
+from abc import ABCMeta, abstractmethod
+from enum import Enum
+from pathlib import Path
+from typing import Tuple
 
-import pandas
+from .DatasetMetadata import DatasetMetadata
+from .DatasetRecordData import DatasetRecordData
+from .DatasetVersion import DatasetVersion
+from .Exceptions import DatasetExistsException, InvalidFileSystemStorageFormatException
 
 
-class TabularStorage(ABC):
+class FileSystemStorage(metaclass=ABCMeta):
 
+    class Format(Enum):
+        CSV = 1
+        PARQUET = 2
+
+    @property
     @abstractmethod
-    def dataset_init(self,
-                     dataset_name: str) -> None:
-        pass
-
-    @abstractmethod
-    def dataset_commit(self,
-                       dataset_name: str,
-                       data_frame: pandas.DataFrame,
-                       index_dimension_name: str,
-                       uri_dimension_name: str,
-                       public_metadata: dict,
-                       private_metadata: dict,
-                       version_name: str,
-                       overwrite_last_commit: bool
-                       ):
-        pass
-
-    @abstractmethod
-    def dataset_drop(self,
-                     dataset_name: str) -> None:
+    def root_path(self):
         pass
 
 
-class BlobStorage(ABC):
-    pass
+class VersionStorage(metaclass=ABCMeta):
+    storage_identifier = "version"
+
+    @abstractmethod
+    def init(self,
+             dataset_name: str):
+        pass
+
+    @abstractmethod
+    def commit(self,
+               dataset_name: str,
+               dataset_version: DatasetVersion,
+               dataset_metadata: DatasetMetadata,
+               amend: bool) -> DatasetVersion:
+        pass
+
+    @abstractmethod
+    def pull(self,
+             dataset_version: DatasetVersion = None) -> DatasetVersion:
+        pass
+
+    @abstractmethod
+    def drop(self,
+             dataset_name: str):
+        pass
 
 
-# class PostgresTabularStorage(TabularStorage):
-#
-#     # reference:
-#     # postgres types: https://www.postgresql.org/docs/current/datatype.html
-#     # pandas types:   https://pandas.pydata.org/docs/user_guide/basics.html#dtypes
-#     _pandas_postgres_data_types = {
-#         'object': 'text',
-#         'int64': 'bigint',
-#         'float64': 'double precision',
-#         'bool': 'boolean',
-#         'datetime64': 'timestamp',
-#         'timedelta[ns]': 'text',
-#         'category': 'text'
-#     }
-#
-#
-#     def __init__(self,
-#                  database_connection_string: str,
-#                  debug_mode: bool = False):
-#         self._database_connection_string = database_connection_string
-#         self._debug_mode = debug_mode
-#
-#     def dataset_init(self,
-#                      name: str) -> None:
-#
-#         """
-#
-#         :param name:
-#         :raises:
-#             DatasetExistsException:
-#             WrongConnectionStringFormatException:
-#         :return: None
-#         """
-#
-#         db_engine = self._create_sqlalchemy_engine()
-#
-#         query = f"CREATE SCHEMA {name};"
-#
-#         try:
-#             with db_engine.connect() as connection:
-#                 connection.execute(statement=text(query))
-#                 connection.commit()
-#         except sqlalchemy.exc.ProgrammingError as ex:
-#             # The PyCharm UI does not correctly display psycopg2 errors, hence the "Cannot find reference..." warning
-#             # ref: https://postgrespro.com/list/thread-id/2518318
-#             #
-#             # Get the original exception of sqlalchemy.exc.ProgrammingError
-#             if isinstance(ex.orig, psycopg2.errors.DuplicateSchema):
-#                 raise DatasetExistsException()
-#
-#         query = postgres_tabular_storage_dataset_init
-#
-#         extract_user_name_regex = r"user=([^&]+)"
-#         try:
-#             result = re.search(extract_user_name_regex, self._database_connection_string)
-#             user_name = result.group(1)
-#         except Exception as ex:
-#             raise WrongConnectionStringFormatException("The connection string for postgres does not contain" +
-#                                                        "a dedicated user name argument.")
-#
-#         prepared_query = query.replace("schema_name_placeholder", name) \
-#             .replace("user_placeholder", user_name)
-#
-#         with db_engine.connect() as connection:
-#             statement = text(prepared_query)
-#             connection.execute(statement=statement)
-#             connection.commit()
-#
-#     def dataset_commit(self,
-#                        name: str,
-#                        data_frame: pandas.DataFrame,
-#                        public_metadata: dict,
-#                        private_metadata: dict,
-#                        version_name: str,
-#                        overwrite_last_commit: bool
-#                        ):
-#
-#         """
-#
-#         :param name:
-#         :param data_frame:
-#         :param public_metadata:
-#         :param private_metadata:
-#         :param version_name:
-#         :param overwrite_last_commit:
-#         :return:
-#         :raises:
-#             ColumnTypeMappingUndefinedException
-#         """
-#
-#         # data_frame.to_sql() is not an option since it does not create a schema in the "append" mode
-#         # and does other funny things
-#
-#         with self._create_sqlalchemy_engine().connect() as connection:
-#
-#             # create new columns
-#             query = self.add_columns_query_generator(data_frame=data_frame,
-#                                                      dataset_name=name)
-#             statement = text(query)
-#             connection.execute(statement)
-#
-#             # upload data
-#             data_frame_rows = data_frame.to_dict('records')
-#
-#             # ref: https://stackoverflow.com/a/10147451
-#             query = f"INSERT INTO {name}.data({', '.join(list(data_frame.columns))}) VALUES "
-#             for row in data_frame_rows:
-#                 values = list(row.values())
-#                 # values = ['null' if value is None else f"'{str(value)}'::{type}" for value, type in zip(values, value_types)]
-#                 values = ['null' if value is None else f"'{str(value)}'" for value in values]
-#                 query = query + '(' + ', '.join(values) + '), '
-#             # remove last comma
-#             query = query[:-2]
-#
-#             # rows_to_insert = new_data.to_dict('records')
-#             #
-#             # # ref: https://stackoverflow.com/a/10147451
-#             # query = f"INSERT INTO {dataset._name}.data({', '.join(list(new_data.columns))}) VALUES "
-#             # for row in rows_to_insert:
-#             #     values = list(row.values())
-#             #     # values = ['null' if value is None else f"'{str(value)}'::{type}" for value, type in zip(values, value_types)]
-#             #     values = ['null' if value is None else f"'{str(value)}'" for value in values]
-#             #     query = query + '(' + ', '.join(values) + '), '
-#             # # remove last comma
-#             # query = query[:-2]
-#             # query = query + " RETURNING observation_id;"
-#             #
-#             # statement = text(query)
-#             # result = connection.execute(statement)
-#             # inserted_observation_ids = [str(row[0]) for row in result.all()]
-#             #
-#
-#
-#
-#
-#
-#             # # create version
-#             # query_parameters = {
-#             #     "version_name": new_version_name,
-#             #     "version_git_commit": new_version_git_commit,
-#             #     "version_message": new_version_message
-#             # }
-#             # query = f"""INSERT INTO {dataset._name}.versions (id, name, git_commit, message)
-#             #             VALUES (DEFAULT, :version_name, :version_git_commit, :version_message)
-#             #             RETURNING id;"""
-#             #
-#             # statement = text(query)
-#             #
-#             # result = connection.execute(statement, parameters=query_parameters)
-#             # version_id = int(result.first()[0])
-#             #
-#             # # version dimensions
-#             # dimension_names = list(new_data.columns)
-#             # for dimension in dimension_names:
-#             #     query_parameters = {
-#             #         "version_id": version_id,
-#             #         "dimension_name": dimension
-#             #     }
-#             #     query = f"""INSERT INTO {dataset._name}.version_dimensions (version_id, dimension_name)
-#             #                        VALUES (:version_id, :dimension_name);"""
-#             #
-#             #     statement = text(query)
-#             #     connection.execute(statement, parameters=query_parameters)
-#             #
-#             # # version observations
-#             # for observation_id in inserted_observation_ids:
-#             #     query_parameters = {
-#             #         "version_id": version_id,
-#             #         "observation_id": observation_id
-#             #     }
-#             #     query = f"""INSERT INTO {dataset._name}.version_observations (version_id, observation_id)
-#             #                                VALUES (:version_id, :observation_id);"""
-#             #
-#             #     statement = text(query)
-#             #     connection.execute(statement, parameters=query_parameters)
-#             #
-#             # # settings
-#             # query_parameters = {
-#             #     "index_dimension": dataset.index_dimension
-#             # }
-#             # query = f"""INSERT INTO {dataset._name}.settings (id, name, value, value_type)
-#             #                 VALUES (DEFAULT, 'index_dimension', :index_dimension, NULL)
-#             #                 RETURNING id;"""
-#             #
-#             # statement = text(query)
-#             # result = connection.execute(statement, parameters=query_parameters)
-#             # setting_ids = [str(row[0]) for row in result.all()]
-#             #
-#             # # version settings
-#             # for setting_id in setting_ids:
-#             #     query_parameters = {
-#             #         "version_id": version_id,
-#             #         "setting_id": setting_id
-#             #     }
-#             #     query = f"""INSERT INTO {dataset._name}.version_settings (version_id, setting_id)
-#             #                                        VALUES (:version_id, :setting_id);"""
-#             #
-#             #     statement = text(query)
-#             #     connection.execute(statement, parameters=query_parameters)
-#
-#             connection.commit()
-#
-#
-#     def dataset_drop(self,
-#                      name: str) -> None:
-#         db_engine = self._create_sqlalchemy_engine()
-#
-#         query = f"DROP SCHEMA IF EXISTS {name} CASCADE;"
-#
-#         with db_engine.connect() as connection:
-#             statement = text(query)
-#             connection.execute(statement=statement)
-#             connection.commit()
-#
-#     def _create_sqlalchemy_engine(self):
-#         return create_engine(url=self._database_connection_string,
-#                              echo=True if self._debug_mode else False,
-#                              echo_pool=True if self._debug_mode else False)
-#
-#     def add_columns_query_generator(self,
-#                                     data_frame: pandas.DataFrame,
-#                                     dataset_name: str) -> str:
-#         """
-#
-#         :param data_frame:
-#         :param dataset_name:
-#         :return:
-#         :raises:
-#             ColumnTypeMappingUndefinedException
-#         """
-#
-#         query = str()
-#         for column_name, pandas_column_type in data_frame.dtypes.items():
-#
-#             if str(pandas_column_type) in PostgresTabularStorage._pandas_postgres_data_types:
-#                 postgres_column_type = PostgresTabularStorage._pandas_postgres_data_types[str(pandas_column_type)]
-#             else:
-#                 raise ColumnTypeMappingUndefinedException(column_name=column_name)
-#
-#             query += f"ALTER TABLE {dataset_name}.data ADD COLUMN IF NOT EXISTS {column_name} {postgres_column_type}; "
-#         return query
+class ObjectStorage(metaclass=ABCMeta):
+    storage_identifier = "object"
+
+    @abstractmethod
+    def init(self,
+             dataset_name: str):
+        pass
+
+    @abstractmethod
+    def drop(self,
+             dataset_name: str):
+        pass
 
 
+class RecordStorage(metaclass=ABCMeta):
+    storage_identifier = "record"
+
+    @abstractmethod
+    def init(self,
+             dataset_name: str):
+        pass
+
+    @abstractmethod
+    def commit(self,
+               dataset_name: str,
+               dataset_record_data: DatasetRecordData,
+               dataset_version: DatasetVersion,
+               index_dimension_name: str) -> None:
+        pass
+
+    @abstractmethod
+    def drop(self,
+             dataset_name: str):
+        pass
 
 
-class MinioBlobStorage(BlobStorage):
-    pass
+class FileSystemVersionStorageLineageContainerSchema:
+    def __init__(self,
+                 version: DatasetVersion,
+                 metadata: DatasetMetadata):
+        self._version = version
+        self._metadata = metadata
+
+    @property
+    def version(self):
+        return self._version
+
+    @property
+    def metadata(self):
+        return self._metadata
+
+    def to_json(self):
+        to_return = {
+            "version": self._version,
+            "metadata": self._metadata
+        }
+        return to_return
+
+    @classmethod
+    def from_json(cls, json_dict):
+        version = DatasetVersion.from_json(json_dict["version"])
+        metadata = DatasetMetadata.from_json(json_dict["metadata"])
+        return FileSystemVersionStorageLineageContainerSchema(version=version, metadata=metadata)
 
 
+class FileSystemVersionStorageSchema:
+    def __init__(self, lineage: list[FileSystemVersionStorageLineageContainerSchema]):
+        self._lineage = lineage
 
+    @property
+    def lineage(self):
+        return self._lineage
+
+    def to_json(self):
+        to_return = {
+            "lineage": self._lineage
+        }
+        return to_return
+
+    @classmethod
+    def from_json(cls, json_dict):
+        lineage = [
+            FileSystemVersionStorageLineageContainerSchema.from_json(version_container) for
+            version_container in json_dict['lineage']]
+        return FileSystemVersionStorageSchema(lineage=lineage)
+
+
+class FileSystemVersionStorage(FileSystemStorage, VersionStorage):
+    file_name = "version.json"
+
+    def __init__(self,
+                 root_path: Path):
+        self._root_path = root_path
+
+    @property
+    def root_path(self):
+        return self._root_path
+
+    def init(self, dataset_name: str):
+        storage_path = Path(self.root_path, dataset_name, self.storage_identifier)
+
+        if os.path.exists(storage_path):
+            raise DatasetExistsException(dataset_name=dataset_name)
+
+        os.makedirs(storage_path)
+
+        # initial lineage schema
+        storage_path = Path(self.root_path, dataset_name, self.storage_identifier, self.file_name)
+        storage_data = FileSystemVersionStorageSchema(
+            lineage=[]
+        )
+        with open(storage_path, "w") as f:
+            f.write(json.dumps(storage_data,
+                               default=lambda obj: obj.to_json(),
+                               indent=4))
+
+    def commit(self,
+               dataset_name: str,
+               dataset_version: DatasetVersion,
+               dataset_metadata: DatasetMetadata,
+               amend: bool) -> DatasetVersion:
+
+        storage_path = Path(self.root_path, dataset_name, self.storage_identifier, self.file_name)
+
+        # get data from version storage
+        with open(storage_path, "r") as f:
+            content = f.read()
+            storage_data = FileSystemVersionStorageSchema.from_json(json.loads(content))
+
+        # get new version id
+        version_ids = [version_container.version.id for version_container in storage_data.lineage]
+        max_version_id = max(version_ids) if len(version_ids) != 0 else 0
+
+        committed_version = None
+        if amend:
+            for index, version_container in enumerate(storage_data.lineage):
+                if version_container.version.id == max_version_id:
+                    # replace last version
+                    committed_version = DatasetVersion(
+                            name=dataset_version.name,
+                            id=version_container.version.id
+                        )
+                    new_version_container = FileSystemVersionStorageLineageContainerSchema(
+                        version=committed_version,
+                        metadata=dataset_metadata
+                    )
+
+                    storage_data.lineage[index] = new_version_container
+        else:
+            committed_version = DatasetVersion(
+                    name=dataset_version.name,
+                    id=max_version_id + 1
+                )
+            new_version_container = FileSystemVersionStorageLineageContainerSchema(
+                version=committed_version,
+                metadata=dataset_metadata
+            )
+
+            storage_data.lineage.append(new_version_container)
+
+        # write new version to version storage
+        with open(storage_path, "w") as f:
+            f.write(json.dumps(storage_data,
+                               default=lambda obj: obj.to_json(),
+                               indent=4))
+
+        return committed_version
+
+    def drop(self, dataset_name: str):
+        storage_path = Path(self.root_path, dataset_name, self.storage_identifier)
+
+        if os.path.exists(storage_path):
+            shutil.rmtree(storage_path)
+
+
+class FileSystemRecordStorage(FileSystemStorage, RecordStorage):
+
+    def __init__(self,
+                 root_path: Path,
+                 storage_format: FileSystemStorage.Format = FileSystemStorage.Format.CSV):
+        self._root_path = root_path
+        self._storage_format = storage_format
+
+    @property
+    def root_path(self):
+        return self._root_path
+
+    def init(self, dataset_name: str):
+        storage_path = Path(self.root_path, dataset_name, self.storage_identifier)
+
+        if os.path.exists(storage_path):
+            raise DatasetExistsException(dataset_name=dataset_name)
+
+        os.makedirs(storage_path)
+
+    def commit(self, dataset_name: str,
+               dataset_record_data: DatasetRecordData,
+               dataset_version: DatasetVersion,
+               index_dimension_name: str):
+
+        storage_path = Path(self.root_path, dataset_name, self.storage_identifier,
+                            f"{dataset_name}_{str(dataset_version.id)}")
+
+        if self._storage_format is FileSystemStorage.Format.CSV:
+            dataset_record_data.to_csv(
+                path=storage_path.with_suffix(".csv"),
+                write_header=True,
+                index_dimension_name=index_dimension_name
+            )
+        elif self._storage_format is FileSystemStorage.Format.PARQUET:
+            dataset_record_data.to_parquet(
+                path=storage_path.with_suffix(".parquet")
+            )
+        else:
+            raise InvalidFileSystemStorageFormatException(dataset_name=dataset_name)
+
+    def drop(self, dataset_name: str):
+        storage_path = Path(self.root_path, dataset_name, self.storage_identifier)
+
+        if os.path.exists(storage_path):
+            shutil.rmtree(storage_path)
+
+
+class FileSystemObjectStorage(FileSystemStorage, ObjectStorage):
+
+    def __init__(self,
+                 root_path: Path):
+        self._root_path = root_path
+
+    @property
+    def root_path(self):
+        return self._root_path
+
+    def init(self, dataset_name: str):
+        storage_path = Path(self.root_path, dataset_name, self.storage_identifier)
+
+        if os.path.exists(storage_path):
+            raise DatasetExistsException(dataset_name=dataset_name)
+
+        os.makedirs(storage_path)
+
+    def drop(self, dataset_name: str):
+        storage_path = Path(self.root_path, dataset_name, self.storage_identifier)
+
+        if os.path.exists(storage_path):
+            shutil.rmtree(storage_path)
+
+# class S3Storage(Storage):
+#     pass
+#
+#
+# class MinioStorage(S3Storage):
+#     pass

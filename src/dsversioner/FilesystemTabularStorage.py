@@ -6,7 +6,7 @@ from pathlib import Path
 
 import pandas
 
-from .Errors import *
+from .Exceptions import *
 from .Storage import TabularStorage
 from .DatasetVersion import DatasetVersion
 from .DatasetMetadata import DatasetMetadata
@@ -36,13 +36,13 @@ class FileSystemTabularStorageDatasetMetadata(DatasetMetadata):
 
 class FileSystemTabularStorageDatasetVersion(DatasetVersion):
     def __init__(self,
-                 version_id: int,
-                 version_name: str,
+                 id: int,
+                 name: str,
                  dataset_metadata: FileSystemTabularStorageDatasetMetadata = None
                  ):
         self._dataset_metadata = dataset_metadata
-        super().__init__(version_id=version_id,
-                         version_name=version_name)
+        super().__init__(id=id,
+                         name=name)
 
     @property
     def dataset_metadata(self):
@@ -62,8 +62,8 @@ class FileSystemTabularStorageDatasetVersion(DatasetVersion):
 
     @classmethod
     def from_json(cls, json_dict):
-        return FileSystemTabularStorageDatasetVersion(version_id=json_dict['version_id'],
-                                                      version_name=json_dict['version_name'],
+        return FileSystemTabularStorageDatasetVersion(id=json_dict['version_id'],
+                                                      name=json_dict['version_name'],
                                                       dataset_metadata=FileSystemTabularStorageDatasetMetadata.from_json(
                                                           json_dict['dataset_metadata']))
 
@@ -164,8 +164,8 @@ class FileSystemTabularStorage(TabularStorage):
         )
 
         new_dataset_version = FileSystemTabularStorageDatasetVersion(
-            version_id=new_version_id,
-            version_name=version_name,
+            id=new_version_id,
+            name=version_name,
             dataset_metadata=FileSystemTabularStorageDatasetMetadata(
                 private_metadata=private_metadata,
                 public_metadata=public_metadata

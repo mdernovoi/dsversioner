@@ -1,2 +1,7 @@
 
-pandas~=2.0.1
+
+pandas == 2.0.1
+
+# .parquet storage engine
+pyarrow == 12.0.0
+
