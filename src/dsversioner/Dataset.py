@@ -1,4 +1,5 @@
 from abc import ABCMeta, abstractmethod
+from pathlib import Path
 
 from .DatasetMetadata import DatasetMetadata
 from .DatasetVersion import DatasetVersion
@@ -66,6 +67,11 @@ class Dataset(metaclass=ABCMeta):
     @property
     @abstractmethod
     def version(self) -> DatasetVersion:
+        pass
+
+    @property
+    @abstractmethod
+    def working_directory(self) -> Path:
         pass
 
     @property

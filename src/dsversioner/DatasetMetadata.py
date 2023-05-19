@@ -61,11 +61,13 @@ class PrivateObjectDatasetMetadata(PrivateDatasetMetadata):
     def __init__(self,
                  index_dimension_name: str = None,
                  uri_dimension_name: str = None,
-                 record_storage_data_location: str = None
+                 record_storage_data_location: str = None,
+                 object_storage_data_location: str = None
                  ):
         self._index_dimension_name = index_dimension_name
         self._uri_dimension_name = uri_dimension_name
         self._record_storage_data_location = record_storage_data_location
+        self._object_storage_data_location = object_storage_data_location
 
     @property
     def index_dimension_name(self):
@@ -91,11 +93,20 @@ class PrivateObjectDatasetMetadata(PrivateDatasetMetadata):
     def record_storage_data_location(self, record_storage_data_location):
         self._record_storage_data_location = record_storage_data_location
 
+    @property
+    def object_storage_data_location(self):
+        return self._object_storage_data_location
+
+    @object_storage_data_location.setter
+    def object_storage_data_location(self, object_storage_data_location):
+        self._object_storage_data_location = object_storage_data_location
+
     def to_json(self):
         to_return = {
             "index_dimension_name": self._index_dimension_name,
             "uri_dimension_name": self._uri_dimension_name,
-            "record_storage_data_location": self._record_storage_data_location
+            "record_storage_data_location": self._record_storage_data_location,
+            "object_storage_data_location": self._object_storage_data_location
         }
         return to_return
 
@@ -104,7 +115,8 @@ class PrivateObjectDatasetMetadata(PrivateDatasetMetadata):
         return PrivateObjectDatasetMetadata(
             index_dimension_name=json_dict['index_dimension_name'],
             uri_dimension_name=json_dict['uri_dimension_name'],
-            record_storage_data_location=json_dict['record_storage_data_location'])
+            record_storage_data_location=json_dict['record_storage_data_location'],
+            object_storage_data_location=json_dict['object_storage_data_location'])
 
 
 class ObjectDatasetMetadata(DatasetMetadata):

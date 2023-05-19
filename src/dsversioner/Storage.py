@@ -9,7 +9,7 @@ from .DatasetMetadata import DatasetMetadata, ObjectDatasetMetadata
 from .DatasetRecordData import DatasetRecordData
 from .DatasetVersion import DatasetVersion
 from .Exceptions import DatasetExistsException, InvalidFileSystemStorageFormatException, \
-    DatasetVersionDoesNotExistException
+    DatasetVersionDoesNotExistException, DatasetVersionExistsException
 
 
 class FileSystemStorage(metaclass=ABCMeta):
@@ -91,6 +91,24 @@ class ObjectStorage(metaclass=ABCMeta):
         pass
 
     @abstractmethod
+    def commit(self,
+               dataset_name: str,
+               dataset_version: DatasetVersion,
+               dataset_record_data: DatasetRecordData,
+               dataset_metadata: DatasetMetadata,
+               working_directory: Path) -> None:
+        pass
+
+    @abstractmethod
+    def pull(self,
+             dataset_name: str,
+             dataset_version: DatasetVersion,
+             dataset_metadata: DatasetMetadata,
+             dataset_record_data: DatasetRecordData,
+             working_directory: Path) -> None:
+        pass
+
+    @abstractmethod
     def drop(self,
              dataset_name: str):
         pass
@@ -109,14 +127,16 @@ class RecordStorage(metaclass=ABCMeta):
                dataset_name: str,
                dataset_version: DatasetVersion,
                dataset_record_data: DatasetRecordData,
-               dataset_metadata: DatasetMetadata) -> None:
+               dataset_metadata: DatasetMetadata,
+               working_directory: Path) -> None:
         pass
 
     @abstractmethod
     def pull(self,
              dataset_name: str,
              dataset_version: DatasetVersion,
-             dataset_metadata: DatasetMetadata) -> DatasetRecordData:
+             dataset_metadata: DatasetMetadata,
+             working_directory: Path) -> DatasetRecordData:
         pass
 
     @abstractmethod
@@ -149,44 +169,38 @@ class ObjectDatasetRecordStorage(RecordStorage, ObjectDatasetStorage):
                dataset_name: str,
                dataset_version: DatasetVersion,
                dataset_record_data: DatasetRecordData,
-               dataset_metadata: ObjectDatasetMetadata) -> None:
+               dataset_metadata: ObjectDatasetMetadata,
+               working_directory: Path) -> None:
         pass
 
     @abstractmethod
     def pull(self,
              dataset_name: str,
              dataset_version: DatasetVersion,
-             dataset_metadata: ObjectDatasetMetadata) -> DatasetRecordData:
+             dataset_metadata: ObjectDatasetMetadata,
+             working_directory: Path) -> DatasetRecordData:
         pass
 
 
-# class FileSystemVersionStorageLineageContainerSchema:
-#     def __init__(self,
-#                  version: DatasetVersion,
-#                  metadata: DatasetMetadata):
-#         self._version = version
-#         self._metadata = metadata
-#
-#     @property
-#     def version(self):
-#         return self._version
-#
-#     @property
-#     def metadata(self):
-#         return self._metadata
-#
-#     def to_json(self):
-#         to_return = {
-#             "version": self._version,
-#             "metadata": self._metadata
-#         }
-#         return to_return
-#
-#     @classmethod
-#     def from_json(cls, json_dict):
-#         version = DatasetVersion.from_json(json_dict["version"])
-#         metadata = DatasetMetadata.from_json(json_dict["metadata"])
-#         return FileSystemVersionStorageLineageContainerSchema(version=version, metadata=metadata)
+class ObjectDatasetObjectStorage(ObjectStorage, ObjectDatasetStorage):
+
+    @abstractmethod
+    def commit(self,
+               dataset_name: str,
+               dataset_version: DatasetVersion,
+               dataset_record_data: DatasetRecordData,
+               dataset_metadata: ObjectDatasetMetadata,
+               working_directory: Path) -> None:
+        pass
+
+    @abstractmethod
+    def pull(self,
+             dataset_name: str,
+             dataset_version: DatasetVersion,
+             dataset_metadata: ObjectDatasetMetadata,
+             dataset_record_data: DatasetRecordData,
+             working_directory: Path) -> None:
+        pass
 
 
 class FileSystemVersionStorageSchema:
@@ -457,93 +471,6 @@ class FileSystemObjectDatasetMetadataStorage(FileSystemStorage, ObjectDatasetMet
             shutil.rmtree(storage_path)
 
 
-# class FileSystemVersionStorage(FileSystemStorage, VersionStorage):
-#     file_name = "version.json"
-#
-#     def __init__(self,
-#                  root_path: Path):
-#         self._root_path = root_path
-#
-#     @property
-#     def root_path(self):
-#         return self._root_path
-#
-#     def init(self, dataset_name: str):
-#         storage_path = Path(self.root_path, dataset_name, self.storage_identifier)
-#
-#         if os.path.exists(storage_path):
-#             raise DatasetExistsException(dataset_name=dataset_name)
-#
-#         os.makedirs(storage_path)
-#
-#         # initial lineage schema
-#         storage_path = Path(self.root_path, dataset_name, self.storage_identifier, self.file_name)
-#         storage_data = FileSystemVersionStorageSchema(
-#             lineage=[]
-#         )
-#         with open(storage_path, "w") as f:
-#             f.write(json.dumps(storage_data,
-#                                default=lambda obj: obj.to_json(),
-#                                indent=4))
-#
-#     def commit(self,
-#                dataset_name: str,
-#                dataset_version: DatasetVersion,
-#                dataset_metadata: DatasetMetadata,
-#                amend: bool) -> DatasetVersion:
-#
-#         storage_path = Path(self.root_path, dataset_name, self.storage_identifier, self.file_name)
-#
-#         # get data from version storage
-#         with open(storage_path, "r") as f:
-#             content = f.read()
-#             storage_data = FileSystemVersionStorageSchema.from_json(json.loads(content))
-#
-#         # get new version id
-#         version_ids = [version_container.version.id for version_container in storage_data.lineage]
-#         max_version_id = max(version_ids) if len(version_ids) != 0 else 0
-#
-#         committed_version = None
-#         if amend:
-#             for index, version_container in enumerate(storage_data.lineage):
-#                 if version_container.version.id == max_version_id:
-#                     # replace last version
-#                     committed_version = DatasetVersion(
-#                         name=dataset_version.name,
-#                         id=version_container.version.id
-#                     )
-#                     new_version_container = FileSystemVersionStorageLineageContainerSchema(
-#                         version=committed_version,
-#                         metadata=dataset_metadata
-#                     )
-#
-#                     storage_data.lineage[index] = new_version_container
-#         else:
-#             committed_version = DatasetVersion(
-#                 name=dataset_version.name,
-#                 id=max_version_id + 1
-#             )
-#             new_version_container = FileSystemVersionStorageLineageContainerSchema(
-#                 version=committed_version,
-#                 metadata=dataset_metadata
-#             )
-#
-#             storage_data.lineage.append(new_version_container)
-#
-#         # write new version to version storage
-#         with open(storage_path, "w") as f:
-#             f.write(json.dumps(storage_data,
-#                                default=lambda obj: obj.to_json(),
-#                                indent=4))
-#
-#         return committed_version
-#
-#     def drop(self, dataset_name: str):
-#         storage_path = Path(self.root_path, dataset_name, self.storage_identifier)
-#
-#         if os.path.exists(storage_path):
-#             shutil.rmtree(storage_path)
-
 class FileSystemObjectDatasetRecordStorage(FileSystemStorage, ObjectDatasetRecordStorage):
 
     def __init__(self,
@@ -566,51 +493,68 @@ class FileSystemObjectDatasetRecordStorage(FileSystemStorage, ObjectDatasetRecor
 
     def commit(self, dataset_name: str, dataset_version: DatasetVersion,
                dataset_record_data: DatasetRecordData,
-               dataset_metadata: ObjectDatasetMetadata) -> None:
+               dataset_metadata: ObjectDatasetMetadata,
+               working_directory: Path) -> None:
 
         file_name = f"{dataset_name}_{str(dataset_version.id)}"
-        storage_path = Path(self.root_path, dataset_name, self.storage_identifier, file_name)
+        storage_path = Path(self.root_path, dataset_name, self.storage_identifier)
 
         if self._storage_format is FileSystemStorage.Format.CSV:
+            file_extension = ".csv"
             dataset_record_data.to_csv(
-                path=storage_path.with_suffix(".csv"),
+                path=Path(storage_path, f"{file_name}{file_extension}"),
                 header=True,
                 index_dimension_name=dataset_metadata.private_metadata.index_dimension_name
             )
-            file_name = f"{file_name}.csv"
         elif self._storage_format is FileSystemStorage.Format.PARQUET:
+            file_extension = ".parquet"
             dataset_record_data.to_parquet(
-                path=storage_path.with_suffix(".parquet")
+                path=Path(storage_path, f"{file_name}{file_extension}")
             )
-            file_name = f"{file_name}.parquet"
         else:
             raise InvalidFileSystemStorageFormatException(dataset_name=dataset_name)
 
-        dataset_metadata.private_metadata.record_storage_data_location = file_name
+        dataset_metadata.private_metadata.record_storage_data_location = f"{file_name}{file_extension}"
+
+        shutil.copyfile(Path(storage_path, f"{file_name}{file_extension}"),
+                        Path(working_directory, f"{self.storage_identifier}{file_extension}"))
 
     def pull(self,
              dataset_name: str,
              dataset_version: DatasetVersion,
-             dataset_metadata: ObjectDatasetMetadata) -> DatasetRecordData:
+             dataset_metadata: ObjectDatasetMetadata,
+             working_directory: Path) -> DatasetRecordData:
 
         storage_path = Path(self.root_path, dataset_name, self.storage_identifier,
                             dataset_metadata.private_metadata.record_storage_data_location)
 
+        file_extension = str(Path(dataset_metadata.private_metadata.record_storage_data_location).suffix)
+
         if self._storage_format is FileSystemStorage.Format.CSV:
-            return DatasetRecordData.from_csv(
+            to_return = DatasetRecordData.from_csv(
                 path=storage_path,
                 # use first row as header
                 header=0,
                 index_dimension_name=dataset_metadata.private_metadata.index_dimension_name
             )
+
+            shutil.copyfile(storage_path, Path(working_directory, f"{self.storage_identifier}{file_extension}"))
+
+            return to_return
         elif self._storage_format is FileSystemStorage.Format.PARQUET:
-            return DatasetRecordData.from_parquet(
+            to_return = DatasetRecordData.from_parquet(
                 path=storage_path
             )
+
+            shutil.copyfile(storage_path, Path(working_directory, f"{self.storage_identifier}{file_extension}"))
+
+            return to_return
 
         # did not find anything
         raise DatasetVersionDoesNotExistException(dataset_name=dataset_name,
                                                   dataset_version_name=dataset_version.id)
+
+
 
     def drop(self, dataset_name: str):
         storage_path = Path(self.root_path, dataset_name, self.storage_identifier)
@@ -619,7 +563,7 @@ class FileSystemObjectDatasetRecordStorage(FileSystemStorage, ObjectDatasetRecor
             shutil.rmtree(storage_path)
 
 
-class FileSystemObjectStorage(FileSystemStorage, ObjectStorage):
+class FileSystemObjectDatasetObjectStorage(FileSystemStorage, ObjectDatasetObjectStorage):
 
     def __init__(self,
                  root_path: Path):
@@ -636,6 +580,57 @@ class FileSystemObjectStorage(FileSystemStorage, ObjectStorage):
             raise DatasetExistsException(dataset_name=dataset_name)
 
         os.makedirs(storage_path)
+
+    def commit(self,
+               dataset_name: str,
+               dataset_version: DatasetVersion,
+               dataset_record_data: DatasetRecordData,
+               dataset_metadata: ObjectDatasetMetadata,
+               working_directory: Path
+               ) -> None:
+
+        container_name = f"{dataset_name}_{str(dataset_version.id)}"
+        container_storage_path = Path(self.root_path, dataset_name, self.storage_identifier, container_name)
+
+        # create storage path
+        if os.path.exists(container_storage_path):
+            raise DatasetVersionExistsException(dataset_name=dataset_name,
+                                                dataset_version_name=dataset_version.id)
+        os.makedirs(container_storage_path)
+
+        object_locations = dataset_record_data.record_data[dataset_metadata.private_metadata.uri_dimension_name].values.tolist()
+        object_locations = [Path(object_location) for object_location in object_locations]
+
+        for object_location in object_locations:
+            shutil.copyfile(Path(working_directory, object_location),
+                            Path(container_storage_path, object_location.name))
+
+        dataset_metadata.private_metadata.object_storage_data_location = container_name
+
+    def pull(self,
+             dataset_name: str,
+             dataset_version: DatasetVersion,
+             dataset_metadata: ObjectDatasetMetadata,
+             dataset_record_data: DatasetRecordData,
+             working_directory: Path) -> None:
+
+        container_name = dataset_metadata.private_metadata.object_storage_data_location
+        container_storage_path = Path(self.root_path, dataset_name, self.storage_identifier, container_name)
+
+        # did not find anything
+        if not os.path.exists(container_storage_path):
+            raise DatasetVersionDoesNotExistException(dataset_name=dataset_name,
+                                                dataset_version_name=dataset_version.id)
+
+        object_locations = dataset_record_data.record_data[
+            dataset_metadata.private_metadata.uri_dimension_name].values.tolist()
+        object_locations = [Path(object_location) for object_location in object_locations]
+
+        for object_location in object_locations:
+            shutil.copyfile(Path(container_storage_path, object_location.name),
+                            Path(working_directory, object_location))
+
+
 
     def drop(self, dataset_name: str):
         storage_path = Path(self.root_path, dataset_name, self.storage_identifier)

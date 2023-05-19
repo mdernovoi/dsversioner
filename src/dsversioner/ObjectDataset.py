@@ -1,5 +1,6 @@
 import hashlib
 import uuid
+from pathlib import Path
 
 import pandas
 
@@ -14,6 +15,7 @@ class ObjectDataset(Dataset):
 
     def __init__(self,
                  name: str,
+                 working_directory: Path,
                  version_storage: VersionStorage,
                  metadata_storage: ObjectDatasetMetadataStorage,
                  record_storage: ObjectDatasetRecordStorage,
@@ -27,6 +29,8 @@ class ObjectDataset(Dataset):
         self._metadata = ObjectDatasetMetadata() if metadata is None else metadata
         self._record_data = DatasetRecordData() if record_data is None else record_data
 
+        self._working_directory = working_directory
+
         self._object_storage = object_storage
         self._version_storage = version_storage
         self._metadata_storage = metadata_storage
@@ -35,6 +39,10 @@ class ObjectDataset(Dataset):
     @property
     def record_data(self):
         return self._record_data
+
+    @property
+    def working_directory(self) -> Path:
+        return self._working_directory
 
     @property
     def name(self):
@@ -74,14 +82,19 @@ class ObjectDataset(Dataset):
         committed_version = self._version_storage.commit(dataset_name=self.name,
                                                          dataset_version=version,
                                                          amend=amend)
+
         self._record_storage.commit(dataset_name=self.name,
                                     dataset_version=committed_version,
                                     dataset_record_data=self.record_data,
-                                    dataset_metadata=self.metadata)
-        # TODO
-        # self._object_storage.commit
+                                    dataset_metadata=self.metadata,
+                                    working_directory=self._working_directory)
 
-        # self._metadata.private_metadata.record_storage_data_location = record_storage_data_location
+        self._object_storage.commit(dataset_name=self.name,
+                                    dataset_version=committed_version,
+                                    dataset_record_data=self.record_data,
+                                    dataset_metadata=self.metadata,
+                                    working_directory=self._working_directory)
+
         self._metadata_storage.commit(dataset_name=self.name,
                                       dataset_version=committed_version,
                                       dataset_metadata=self._metadata,
@@ -98,15 +111,21 @@ class ObjectDataset(Dataset):
         pulled_records = self._record_storage.pull(
             dataset_name=self.name,
             dataset_version=pulled_version,
-            dataset_metadata=pulled_metadata
+            dataset_metadata=pulled_metadata,
+            working_directory=self._working_directory
         )
 
-        pulled_objects = 5  # TODO
+        self._object_storage.pull(
+            dataset_name=self.name,
+            dataset_version=pulled_version,
+            dataset_metadata=pulled_metadata,
+            dataset_record_data=pulled_records,
+            working_directory=self._working_directory
+        )
 
-        # TODO
-        # self._metadata = pulled_metadata
-        # self._record_data = pulled_records
-        # self.version = pulled_version
+        self._metadata = pulled_metadata
+        self._record_data = pulled_records
+        self._version = pulled_version
 
     def drop(self) -> None:
         self._version_storage.drop(dataset_name=self.name)

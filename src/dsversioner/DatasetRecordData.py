@@ -1,4 +1,6 @@
 from pathlib import Path
+# TODO: uncomment after migration to python 3.11
+#from typing import Self
 
 import pandas
 
@@ -28,7 +30,7 @@ class DatasetRecordData:
     def from_csv(cls,
                  path: Path,
                  header: int,
-                 index_dimension_name: str):
+                 index_dimension_name: str): #TODO: uncomment after migration to python 3.11 -> Self:
         df = pandas.read_csv(
             filepath_or_buffer=path,
             header=header,
@@ -44,7 +46,7 @@ class DatasetRecordData:
 
     @classmethod
     def from_parquet(cls,
-                     path: Path):
+                     path: Path): #TODO: uncomment after migration to python 3.11 -> Self:
         df = pandas.read_parquet(
             path=path)
         return DatasetRecordData(record_data=df)
