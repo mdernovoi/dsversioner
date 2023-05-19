@@ -9,14 +9,6 @@ from .DatasetVersion import DatasetVersion
 # Graph data
 # Ordere data (timeseries)
 class Dataset(metaclass=ABCMeta):
-    def __init__(self,
-                 name: str,
-                 metadata: DatasetMetadata = None,
-                 version: DatasetVersion = None
-                 ) -> None:
-        self._metadata = metadata
-        self._name = name
-        self._version = version
 
     @abstractmethod
     def init(self) -> None:
@@ -37,7 +29,7 @@ class Dataset(metaclass=ABCMeta):
     @abstractmethod
     def commit(self,
                version: DatasetVersion = None,
-               amend: bool = False) -> None:
+               amend: bool = False) -> DatasetVersion:
         """
 
         :param version:
@@ -72,13 +64,16 @@ class Dataset(metaclass=ABCMeta):
         pass
 
     @property
-    def metadata(self):
-        return self._metadata
+    @abstractmethod
+    def version(self) -> DatasetVersion:
+        pass
 
     @property
-    def version(self):
-        return self._version
+    @abstractmethod
+    def name(self) -> str:
+        pass
 
     @property
-    def name(self):
-        return self._name
+    @abstractmethod
+    def metadata(self) -> DatasetMetadata:
+        pass

@@ -47,7 +47,7 @@ def create_dataset(name: str,
 
         statement = text(prepared_query)
         connection.execute(statement=statement)
-        connection.commit(,,
+        connection.commit(,,,
 
 def delete_dataset(name: str) -> None:
 
@@ -60,7 +60,7 @@ def delete_dataset(name: str) -> None:
     with engine.connect() as connection:
         statement = text(prepared_query)
         connection.execute(statement=statement)
-        connection.commit(,,
+        connection.commit(,,,
 
 # raises exception
 def get_database_type_from_pandas_type(pandas_type: str) -> str:
@@ -224,7 +224,7 @@ def create_new_row_based_version(
             statement = text(query)
             connection.execute(statement, parameters=query_parameters)
 
-        connection.commit(,,
+        connection.commit(,,,
 
     i = 5
 

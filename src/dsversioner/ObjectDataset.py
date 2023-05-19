@@ -4,9 +4,9 @@ import uuid
 import pandas
 
 from .Dataset import Dataset
-from .DatasetMetadata import DatasetMetadata
+from .DatasetMetadata import ObjectDatasetMetadata
 from .DatasetVersion import DatasetVersion
-from .Storage import VersionStorage, ObjectStorage, RecordStorage
+from .Storage import VersionStorage, ObjectStorage, ObjectDatasetRecordStorage, ObjectDatasetMetadataStorage
 from .DatasetRecordData import DatasetRecordData
 
 
@@ -14,40 +14,49 @@ class ObjectDataset(Dataset):
 
     def __init__(self,
                  name: str,
-                 object_storage: ObjectStorage,
                  version_storage: VersionStorage,
-                 record_storage: RecordStorage,
-                 metadata: DatasetMetadata = None,
+                 metadata_storage: ObjectDatasetMetadataStorage,
+                 record_storage: ObjectDatasetRecordStorage,
+                 object_storage: ObjectStorage,
+                 metadata: ObjectDatasetMetadata = None,
                  version: DatasetVersion = None,
                  record_data: DatasetRecordData = None
                  ):
-        self._object_storage = object_storage
-        self._version_storage = version_storage
-        self._record_storage = record_storage
-
-        metadata = DatasetMetadata() if metadata is None else metadata
-        version = DatasetVersion() if version is None else version
-
+        self._name = name
+        self._version = DatasetVersion() if version is None else version
+        self._metadata = ObjectDatasetMetadata() if metadata is None else metadata
         self._record_data = DatasetRecordData() if record_data is None else record_data
 
-        super().__init__(
-            name=name,
-            metadata=metadata,
-            version=version
-        )
+        self._object_storage = object_storage
+        self._version_storage = version_storage
+        self._metadata_storage = metadata_storage
+        self._record_storage = record_storage
 
     @property
     def record_data(self):
         return self._record_data
 
+    @property
+    def name(self):
+        return self._name
+
+    @property
+    def version(self):
+        return self._version
+
+    @property
+    def metadata(self) -> ObjectDatasetMetadata:
+        return self._metadata
+
     def init(self,
              index_dimension_name: str = "id",
              uri_dimension_name: str = "uri"
              ) -> None:
-        self.metadata.private_metadata.index_dimension_name = index_dimension_name
-        self.metadata.private_metadata.uri_dimension_name = uri_dimension_name
+        self._metadata.private_metadata.index_dimension_name = index_dimension_name
+        self._metadata.private_metadata.uri_dimension_name = uri_dimension_name
 
         self._version_storage.init(dataset_name=self.name)
+        self._metadata_storage.init(dataset_name=self.name)
         self._object_storage.init(dataset_name=self.name)
         self._record_storage.init(dataset_name=self.name)
 
@@ -55,7 +64,7 @@ class ObjectDataset(Dataset):
             record_data: DatasetRecordData = None) -> None:
         self._record_data = record_data
 
-    def commit(self, version: DatasetVersion = None, amend: bool = False) -> None:
+    def commit(self, version: DatasetVersion = None, amend: bool = False) -> DatasetVersion:
         if version is None:
             seed = str(uuid.uuid4())
             hash_object = hashlib.sha512(bytes(seed, 'utf-8'))
@@ -64,21 +73,44 @@ class ObjectDataset(Dataset):
 
         committed_version = self._version_storage.commit(dataset_name=self.name,
                                                          dataset_version=version,
-                                                         dataset_metadata=self.metadata,
                                                          amend=amend)
         self._record_storage.commit(dataset_name=self.name,
-                                    dataset_record_data=self.record_data,
                                     dataset_version=committed_version,
-                                    index_dimension_name=self.metadata.private_metadata.index_dimension_name)
-
+                                    dataset_record_data=self.record_data,
+                                    dataset_metadata=self.metadata)
         # TODO
-        #self._object_storage.commit
+        # self._object_storage.commit
+
+        # self._metadata.private_metadata.record_storage_data_location = record_storage_data_location
+        self._metadata_storage.commit(dataset_name=self.name,
+                                      dataset_version=committed_version,
+                                      dataset_metadata=self._metadata,
+                                      amend=amend)
+
+        return committed_version
 
     def pull(self, version: DatasetVersion = None) -> None:
-        pass
+        pulled_version = self._version_storage.pull(dataset_name=self.name,
+                                                    dataset_version=version)
+        pulled_metadata = self._metadata_storage.pull(dataset_name=self.name,
+                                                      dataset_version=pulled_version)
+
+        pulled_records = self._record_storage.pull(
+            dataset_name=self.name,
+            dataset_version=pulled_version,
+            dataset_metadata=pulled_metadata
+        )
+
+        pulled_objects = 5  # TODO
+
+        # TODO
+        # self._metadata = pulled_metadata
+        # self._record_data = pulled_records
+        # self.version = pulled_version
 
     def drop(self) -> None:
         self._version_storage.drop(dataset_name=self.name)
+        self._metadata_storage.drop(dataset_name=self.name)
         self._object_storage.drop(dataset_name=self.name)
         self._record_storage.drop(dataset_name=self.name)
 

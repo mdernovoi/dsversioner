@@ -53,12 +53,15 @@ def do_smth():
         version_storage=dv.FileSystemVersionStorage(
             root_path=Path(os.pardir, 'testdata')
         ),
+        metadata_storage=dv.FileSystemObjectDatasetMetadataStorage(
+            root_path=Path(os.pardir, 'testdata')
+        ),
         object_storage=dv.FileSystemObjectStorage(
             root_path=Path(os.pardir, 'testdata')
         ),
-        record_storage=dv.FileSystemRecordStorage(
+        record_storage=dv.FileSystemObjectDatasetRecordStorage(
             root_path=Path(os.pardir, 'testdata'),
-            storage_format=dv.FileSystemStorage.Format.CSV
+            storage_format=dv.FileSystemStorage.Format.PARQUET
         )
     )
 
@@ -79,6 +82,8 @@ def do_smth():
     dataset_1.commit(version=dv.DatasetVersion(name="fere"), amend=False)
     # dataset_1.commit("v222")
     # dataset_1.commit("v222", overwrite_last_commit=True)
+
+    dataset_1.pull()
 
 
 if __name__ == '__main__':
