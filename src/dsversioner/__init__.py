@@ -2,11 +2,11 @@
 This module...
 """
 
-from .Exceptions import *
-from .ObjectDataset import ObjectDataset
-from .ObjectDatasetFileSystemStorage import FileSystemObjectDatasetVersionStorage, \
+from dsversioner.Exceptions import *
+from dsversioner.ObjectDataset import ObjectDataset
+from dsversioner.ObjectDatasetFileSystemStorage import FileSystemObjectDatasetVersionStorage, \
     FileSystemObjectDatasetMetadataStorage, FileSystemObjectDatasetRecordStorage, FileSystemObjectDatasetObjectStorage
-from .ObjectDatasetMetadata import ObjectDatasetMetadata
-from .ObjectDatasetRecordData import PandasObjectDatasetRecordData
-from .ObjectDatasetVersion import ObjectDatasetVersion
-from .Storage import RecordStorageFormats
+from dsversioner.ObjectDatasetMetadata import ObjectDatasetMetadata
+from dsversioner.ObjectDatasetRecordData import PandasObjectDatasetRecordData
+from dsversioner.ObjectDatasetVersion import ObjectDatasetVersion
+from dsversioner.Storage import RecordStorageFormats
