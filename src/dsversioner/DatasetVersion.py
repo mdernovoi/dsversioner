@@ -29,15 +29,6 @@ class DatasetVersion(abc.ABC):
 
     @classmethod
     @abc.abstractmethod
-    def latest(cls):  # TODO: uncomment after migration to python 3.11 -> Self:
-        """
-
-        :return:
-        """
-        pass
-
-    @classmethod
-    @abc.abstractmethod
     def from_id(cls,
                 id: int):  # TODO: uncomment after migration to python 3.11 -> Self:
         """
@@ -46,43 +37,3 @@ class DatasetVersion(abc.ABC):
         :return:
         """
         pass
-
-
-class DatasetVersionLatest(DatasetVersion):
-    """
-    This class
-    """
-
-    @property
-    def id(self) -> int:
-        """
-
-        :return:
-        """
-        return -1
-
-    @property
-    def name(self) -> str:
-        """
-
-        :return:
-        """
-        return "latest"
-
-    @classmethod
-    def latest(cls):  # TODO: uncomment after migration to python 3.11 -> Self:
-        """
-
-        :return:
-        """
-        raise NotImplementedError()
-
-    @classmethod
-    def from_id(cls,
-                id: int):  # TODO: uncomment after migration to python 3.11 -> Self:
-        """
-
-        :param id:
-        :return:
-        """
-        raise NotImplementedError()

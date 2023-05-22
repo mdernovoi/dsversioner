@@ -6,9 +6,9 @@ import json
 import os
 import shutil
 from pathlib import Path
+from typing import Type
 
 from .Storage import RecordStorageFormats
-from .DatasetVersion import DatasetVersionLatest
 from .Exceptions import DatasetExistsException, InvalidRecordStorageFormatException, \
     DatasetVersionDoesNotExistException
 from .FileSystemStorage import FileSystemStorage
@@ -177,7 +177,7 @@ class FileSystemObjectDatasetVersionStorage(FileSystemStorage, ObjectDatasetVers
         version_ids = [version.id for version in storage_data.versions]
         max_version_id = max(version_ids) if len(version_ids) != 0 else 0
 
-        if dataset_version is DatasetVersionLatest:
+        if dataset_version is None:
             # return latest
             for index, version in enumerate(storage_data.versions):
                 if version.id == max_version_id:
@@ -504,10 +504,12 @@ class FileSystemObjectDatasetRecordStorage(FileSystemStorage, ObjectDatasetRecor
              dataset_name: str,
              dataset_version: ObjectDatasetVersion,
              dataset_metadata: ObjectDatasetMetadata,
+             dataset_record_data: ObjectDatasetRecordData,
              working_directory: Path) -> ObjectDatasetRecordData:
 
         """
 
+        :param dataset_record_data:
         :param dataset_name:
         :param dataset_version:
         :param dataset_metadata:
@@ -519,7 +521,7 @@ class FileSystemObjectDatasetRecordStorage(FileSystemStorage, ObjectDatasetRecor
                             dataset_metadata.private_metadata.record_storage_data_location)
 
         if self._storage_format is RecordStorageFormats.CSV:
-            to_return = ObjectDatasetRecordData.from_csv(
+            to_return = dataset_record_data.from_csv(
                 path=storage_path,
                 # use first row as header
                 header_rows=0,
@@ -529,7 +531,7 @@ class FileSystemObjectDatasetRecordStorage(FileSystemStorage, ObjectDatasetRecor
             return to_return
 
         elif self._storage_format is RecordStorageFormats.PARQUET:
-            to_return = ObjectDatasetRecordData.from_parquet(
+            to_return = dataset_record_data.from_parquet(
                 path=storage_path
             )
 

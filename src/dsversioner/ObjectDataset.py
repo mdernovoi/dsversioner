@@ -3,6 +3,7 @@ This module
 """
 
 import hashlib
+import json
 import uuid
 from pathlib import Path
 
@@ -26,7 +27,7 @@ class ObjectDataset(Dataset):
                  metadata_storage: ObjectDatasetMetadataStorage,
                  record_storage: ObjectDatasetRecordStorage,
                  object_storage: ObjectDatasetObjectStorage,
-                 record_data: ObjectDatasetRecordData = None,
+                 record_data: ObjectDatasetRecordData,
                  metadata: ObjectDatasetMetadata = None,
                  version: ObjectDatasetVersion = None,
                  ):
@@ -146,6 +147,7 @@ class ObjectDataset(Dataset):
                                       dataset_metadata=self._metadata,
                                       amend=amend)
 
+        self._version = committed_version
         return committed_version
 
     def pull(self,
@@ -166,6 +168,7 @@ class ObjectDataset(Dataset):
             dataset_name=self.name,
             dataset_version=pulled_version,
             dataset_metadata=pulled_metadata,
+            dataset_record_data=self._record_data,
             working_directory=self._working_directory
         )
 
@@ -191,3 +194,18 @@ class ObjectDataset(Dataset):
         self._metadata_storage.drop(dataset_name=self.name)
         self._object_storage.drop(dataset_name=self.name)
         self._record_storage.drop(dataset_name=self.name)
+
+    def __str__(self):
+        data = {
+            'name': self._name,
+            'version': self._version.to_json(),
+            'metadata': self._metadata.to_json()
+        }
+
+        return json.dumps(data,
+                          indent=4,
+                          default=lambda obj: obj.to_json())
+
+    def __repr__(self):
+        return self.__str__()
+

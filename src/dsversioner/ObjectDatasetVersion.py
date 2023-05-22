@@ -2,7 +2,7 @@
 This module...
 """
 
-from .DatasetVersion import DatasetVersion, DatasetVersionLatest
+from .DatasetVersion import DatasetVersion
 from .Serializable import JsonSerializable
 
 
@@ -33,14 +33,6 @@ class ObjectDatasetVersion(DatasetVersion, JsonSerializable):
         :return:
         """
         return self._name
-
-    @classmethod
-    def latest(cls):  # TODO: uncomment after migration to python 3.11 -> Self:
-        """
-
-        :return:
-        """
-        return DatasetVersionLatest()
 
     @classmethod
     def from_id(cls,
@@ -78,3 +70,5 @@ class ObjectDatasetVersion(DatasetVersion, JsonSerializable):
         return ObjectDatasetVersion(
             id=json_dict['id'],
             name=json_dict['name'])
+
+

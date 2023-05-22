@@ -5,6 +5,7 @@ This module
 import abc
 from abc import abstractmethod
 from pathlib import Path
+from typing import Type
 
 from .ObjectDatasetMetadata import ObjectDatasetMetadata
 from .ObjectDatasetRecordData import ObjectDatasetRecordData
@@ -110,9 +111,11 @@ class ObjectDatasetRecordStorage(RecordStorage, ObjectDatasetStorage):
              dataset_name: str,
              dataset_version: ObjectDatasetVersion,
              dataset_metadata: ObjectDatasetMetadata,
+             dataset_record_data: ObjectDatasetRecordData,
              working_directory: Path) -> ObjectDatasetRecordData:
         """
 
+        :param dataset_record_data:
         :param dataset_name:
         :param dataset_version:
         :param dataset_metadata:

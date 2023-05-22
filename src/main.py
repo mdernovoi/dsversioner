@@ -1,37 +1,22 @@
 import os
 from pathlib import Path
+from pprint import pprint
 
 import pandas
 
 import dsversioner as dv
 
-#tabular-storage = PostgresTabularStorage(connection string, secrets, user, ...)
-#blob-storage = MinioBlobStorage(url, ...)
 
-#storage_context = Storage(TabularStorage, BlobStorage: opt)
+index_dim_name = "myid"
 
-# dataset = Dataset("name", storage_context)
-# dataset.init(index-col)
-# dataset.add(mydataframe)
-# dataset.commit()
-#
-# dataset.add(newdataframe)
-# dataset.commit("v147")
-#
-# dataset2 = Dataset("myname", storage_context)
-# dataset2.pull("v1.2.3")
-#
-# dataset2.add(mynewnwedatafarme)
-# dataset2.commit()
 
-index_dim_name = "ddd"
-def create_example_dataframe_1() -> pandas.DataFrame:
-
-    observation_count = 5
+def create_example_dataframe_1(observation_count=5) -> pandas.DataFrame:
+    # max observation count
+    assert observation_count <= 5
 
     data = {
-        index_dim_name: list(range(100, 100+observation_count)),
-        'uri': ['f1.jpeg', 'f2.jpeg', 'f3.jpeg', 'f4.jpeg', 'f5.jpeg'],
+        index_dim_name: list(range(100, 100 + observation_count)),
+        'uri': ['f1.jpeg', 'f2.jpeg', 'f3.jpeg', 'f4.jpeg', 'f5.jpeg'][0:observation_count],
         'blaid': list(range(observation_count)),
         'somevalue': [float(item) for item in list(range(observation_count))],
     }
@@ -45,9 +30,7 @@ def create_example_dataframe_1() -> pandas.DataFrame:
 
 
 def do_smth():
-    #filesys_store_ctxt = dv.FileSystemTabularStorage(path=str(Path("dataset_tests")))
-    #dataset_storage_context = dv.DatasetStorageContext(tabular_storage=filesys_store_ctxt)
-
+    # NOTE: empty record_data for type inference
     dataset_1 = dv.ObjectDataset(
         name="ds1",
         version_storage=dv.FileSystemObjectDatasetVersionStorage(
@@ -63,33 +46,81 @@ def do_smth():
             root_path=Path(os.pardir, 'testdata'),
             storage_format=dv.RecordStorageFormats.CSV
         ),
-        working_directory=Path(os.pardir, 'testworkdir'),
-        #record_data=dv.PandasObjectDatasetRecordData()
+        record_data=dv.PandasObjectDatasetRecordData(),
+        working_directory=Path(os.pardir, 'testworkdir')
     )
 
-    #dataset_1 = dv.Dataset(name="ds1", storage_context=dataset_storage_context)
+    # clean
+    dataset_1.drop()
 
-    # try:
-    #     dataset_1.init()
-    # except dv.DatasetExistsException:
-    #     dataset_1.drop()
-    #     dataset_1.init()
+    # init
+    dataset_1.init(index_dimension_name=index_dim_name)
 
+    # set metadata
+    dataset_1.metadata.public_metadata.set_value_by_key("bla", 15)
 
+    # add
     dataset_1.add(record_data=dv.PandasObjectDatasetRecordData(
-        record_data=create_example_dataframe_1()
+        record_data=create_example_dataframe_1(5)
     ))
-    dataset_1.metadata.public_metadata.set_value_by_key("bla", "uz7")
-    dataset_1.metadata.private_metadata.index_dimension_name = index_dim_name
-    dataset_1.metadata.private_metadata.uri_dimension_name = "uri"
-    dataset_1.commit(version=dv.ObjectDatasetVersion(name="ddw"), amend=False)
 
+    # commit
+    committed_version = dataset_1.commit()
 
-    #dataset_1.pull()
-    i = 5
-    # NOTE: only id as filter criterion is supported
-    #dataset_1.pull(version=dv.DatasetVersion(id=8))
-    i = 5
+    # add another dataset
+    dataset_1.add(record_data=dv.PandasObjectDatasetRecordData(
+        record_data=create_example_dataframe_1(3)
+    ))
+
+    # commit
+    dataset_1.commit(version=dv.ObjectDatasetVersion(name="1.1"))
+
+    # redo last commit
+    # NOTE: version name must be explicitly set!!!
+    dataset_1.add(record_data=dv.PandasObjectDatasetRecordData(
+        record_data=create_example_dataframe_1(1)
+    ))
+    dataset_1.commit(version=dv.ObjectDatasetVersion(name="new-1.1"), amend=True)
+
+    # print dataset
+    print(dataset_1)
+
+    # USER: clear working dir
+
+    # pull
+    dataset_1.pull(version=dv.ObjectDatasetVersion.from_id(id=committed_version.id))
+
+    # --------------------------------------------------------------------------------------------------------
+    # new dataset with data of ds1
+    dataset_2 = dv.ObjectDataset(
+        name="ds1",
+        version_storage=dv.FileSystemObjectDatasetVersionStorage(
+            root_path=Path(os.pardir, 'testdata')
+        ),
+        metadata_storage=dv.FileSystemObjectDatasetMetadataStorage(
+            root_path=Path(os.pardir, 'testdata')
+        ),
+        object_storage=dv.FileSystemObjectDatasetObjectStorage(
+            root_path=Path(os.pardir, 'testdata')
+        ),
+        record_storage=dv.FileSystemObjectDatasetRecordStorage(
+            root_path=Path(os.pardir, 'testdata'),
+            storage_format=dv.RecordStorageFormats.CSV
+        ),
+        record_data=dv.PandasObjectDatasetRecordData(),
+        working_directory=Path(os.pardir, 'testworkdir2')
+    )
+
+    # pull latest version
+    dataset_2.pull()
+
+    # add
+    dataset_1.add(record_data=dv.PandasObjectDatasetRecordData(
+        record_data=create_example_dataframe_1(1)
+    ))
+
+    # commit
+    dataset_1.commit(version=dv.ObjectDatasetVersion(name="2.0"))
 
 
 if __name__ == '__main__':

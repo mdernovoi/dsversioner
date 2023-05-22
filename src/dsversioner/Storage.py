@@ -5,6 +5,7 @@ import abc
 from abc import abstractmethod
 from enum import Enum
 from pathlib import Path
+from typing import Type
 
 from .DatasetMetadata import DatasetMetadata
 from .DatasetRecordData import DatasetRecordData
@@ -158,9 +159,11 @@ class RecordStorage(abc.ABC):
              dataset_name: str,
              dataset_version: DatasetVersion,
              dataset_metadata: DatasetMetadata,
+             dataset_record_data: DatasetRecordData,
              working_directory: Path) -> DatasetRecordData:
         """
 
+        :param dataset_record_data:
         :param dataset_name:
         :param dataset_version:
         :param dataset_metadata:

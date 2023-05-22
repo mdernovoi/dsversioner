@@ -6,8 +6,9 @@
 
 The goal of this project is to create a flexible and extensible way of versioning datasets for data analysis projects. 
 
+**TIP**: for an example reference the [`src/main.py`](src/main.py) file.
+
 ## todo
 
-- many many things
 - linting
 - static code analysis

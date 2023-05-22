@@ -94,7 +94,7 @@ class PandasObjectDatasetRecordData(PandasDatasetRecordData, ObjectDatasetRecord
             header=header_rows,
             index_col=index_dimension_name
         )
-        return PandasDatasetRecordData(record_data=df)
+        return PandasObjectDatasetRecordData(record_data=df)
 
     def to_parquet(self,
                    path: Path) -> None:
@@ -118,4 +118,4 @@ class PandasObjectDatasetRecordData(PandasDatasetRecordData, ObjectDatasetRecord
         df = pandas.read_parquet(
             path=path)
 
-        return PandasDatasetRecordData(record_data=df)
+        return PandasObjectDatasetRecordData(record_data=df)
