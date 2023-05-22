@@ -1,0 +1,25 @@
+[project]
+name = "dsversioner"
+version = "1.0.0"
+authors = [
+  { name="Maxim Dernovoi", email="author@example.com" },
+]
+description = "Flexible and extensible dataset versioning."
+readme = "README.md"
+license = {file = "LICENSE"}
+requires-python = ">=3.7"
+classifiers = [
+    "Programming Language :: Python :: 3",
+    "License :: OSI Approved :: MIT License",
+    "Operating System :: OS Independent",
+]
+# in synch with requirements.txt
+dependencies = [
+    "pandas == 2.0.1",
+    "pyarrow == 12.0.0"
+]
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
