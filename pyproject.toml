@@ -33,4 +33,7 @@ include = [
     "README.md",
     "SECURITY.md"
 ]
+exclue = [
+    ".gitignore"
+]
 
