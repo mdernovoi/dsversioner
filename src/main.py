@@ -50,7 +50,7 @@ def do_smth():
 
     dataset_1 = dv.ObjectDataset(
         name="ds1",
-        version_storage=dv.FileSystemVersionStorage(
+        version_storage=dv.FileSystemObjectDatasetVersionStorage(
             root_path=Path(os.pardir, 'testdata')
         ),
         metadata_storage=dv.FileSystemObjectDatasetMetadataStorage(
@@ -61,9 +61,10 @@ def do_smth():
         ),
         record_storage=dv.FileSystemObjectDatasetRecordStorage(
             root_path=Path(os.pardir, 'testdata'),
-            storage_format=dv.FileSystemStorage.Format.CSV
+            storage_format=dv.RecordStorageFormats.CSV
         ),
-        working_directory=Path(os.pardir, 'testworkdir')
+        working_directory=Path(os.pardir, 'testworkdir'),
+        #record_data=dv.PandasObjectDatasetRecordData()
     )
 
     #dataset_1 = dv.Dataset(name="ds1", storage_context=dataset_storage_context)
@@ -75,19 +76,19 @@ def do_smth():
     #     dataset_1.init()
 
 
-    # dataset_1.add(record_data=dv.DatasetRecordData(
-    #     record_data=create_example_dataframe_1()
-    # ))
-    # dataset_1.metadata.public_metadata.set_value_by_key("bla", "uz7")
-    # dataset_1.metadata.private_metadata.index_dimension_name = index_dim_name
-    # dataset_1.metadata.private_metadata.uri_dimension_name = "uri"
-    #dataset_1.commit(version=dv.DatasetVersion(name="ddw"), amend=False)
+    dataset_1.add(record_data=dv.PandasObjectDatasetRecordData(
+        record_data=create_example_dataframe_1()
+    ))
+    dataset_1.metadata.public_metadata.set_value_by_key("bla", "uz7")
+    dataset_1.metadata.private_metadata.index_dimension_name = index_dim_name
+    dataset_1.metadata.private_metadata.uri_dimension_name = "uri"
+    dataset_1.commit(version=dv.ObjectDatasetVersion(name="ddw"), amend=False)
 
 
-    dataset_1.pull()
+    #dataset_1.pull()
     i = 5
     # NOTE: only id as filter criterion is supported
-    dataset_1.pull(version=dv.DatasetVersion(id=8))
+    #dataset_1.pull(version=dv.DatasetVersion(id=8))
     i = 5
 
 

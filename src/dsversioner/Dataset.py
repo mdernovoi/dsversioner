@@ -1,3 +1,8 @@
+
+"""
+This module...
+"""
+
 from abc import ABCMeta, abstractmethod
 from pathlib import Path
 
@@ -5,17 +10,20 @@ from .DatasetMetadata import DatasetMetadata
 from .DatasetVersion import DatasetVersion
 
 
-# Types:
-# Record data (tabular)
-# Graph data
-# Ordere data (timeseries)
 class Dataset(metaclass=ABCMeta):
+    """
+    # Future Types:
+    # Record data (tabular)
+    # Graph data
+    # Ordere data (timeseries)
+    """
 
     @abstractmethod
     def init(self) -> None:
         """
+
+
         :return:
-        :raises DatasetExistsException:
         """
         pass
 
@@ -36,9 +44,6 @@ class Dataset(metaclass=ABCMeta):
         :param version:
         :param amend:
         :return:
-        :raises DatasetDoesNotExistException
-        :raises DatasetVersionExistsException
-        :raises NothingToCommitException
         """
         pass
 
@@ -49,9 +54,6 @@ class Dataset(metaclass=ABCMeta):
 
         :param version:
         :return:
-        :raises DatasetDoesNotExistException
-        :raises DatasetVersionDoesNotExistException:
-        :raises NothingToPullException
         """
         pass
 
@@ -60,26 +62,41 @@ class Dataset(metaclass=ABCMeta):
         """
 
         :return:
-        :raises DatasetDoesNotExistException
         """
         pass
 
     @property
     @abstractmethod
     def version(self) -> DatasetVersion:
+        """
+
+        :return:
+        """
         pass
 
     @property
     @abstractmethod
     def working_directory(self) -> Path:
+        """
+
+        :return:
+        """
         pass
 
     @property
     @abstractmethod
     def name(self) -> str:
+        """
+
+        :return:
+        """
         pass
 
     @property
     @abstractmethod
     def metadata(self) -> DatasetMetadata:
+        """
+
+        :return:
+        """
         pass
