@@ -6,7 +6,6 @@ import json
 import os
 import shutil
 from pathlib import Path
-from typing import Type
 
 from .Storage import RecordStorageFormats
 from .Exceptions import DatasetExistsException, InvalidRecordStorageFormatException, \
@@ -25,11 +24,12 @@ class FileSystemObjectDatasetVersionStorageSchema(JsonSerializable):
     """
 
     def __init__(self,
-                 versions: list[ObjectDatasetVersion] = None):
+                 #versions: list[ObjectDatasetVersion] = None):
+                 versions: list = None):
         self._versions = versions
 
     @property
-    def versions(self) -> list[ObjectDatasetVersion]:
+    def versions(self) -> list: #list[ObjectDatasetVersion]:
         """
 
         :return:
@@ -266,11 +266,13 @@ class FileSystemObjectDatasetMetadataStorageSchema(JsonSerializable):
     This class...
     """
 
-    def __init__(self, metadata: list[FileSystemObjectDatasetMetadataStorageContainerSchema] = None):
+    def __init__(self,
+                 #metadata: list[FileSystemObjectDatasetMetadataStorageContainerSchema] = None):
+                 metadata: list= None):
         self._metadata = metadata
 
     @property
-    def metadata(self) -> list[FileSystemObjectDatasetMetadataStorageContainerSchema]:
+    def metadata(self) -> list: #list[FileSystemObjectDatasetMetadataStorageContainerSchema]:
         """
 
         :return:
