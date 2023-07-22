@@ -1,6 +1,6 @@
 [project]
 name = "dsversioner"
-version = "0.9.4"
+version = "0.9.5"
 authors = [
   { name="Maxim Dernovoi", email="author@example.com" },
 ]
