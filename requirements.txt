@@ -3,5 +3,5 @@
 pandas == 2.0.1
 
 # .parquet storage engine
-pyarrow == 12.0.0
+pyarrow == 14.0.1
 
