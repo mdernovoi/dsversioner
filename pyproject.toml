@@ -16,7 +16,7 @@ classifiers = [
 # in synch with requirements.txt
 dependencies = [
     "pandas == 2.0.1",
-    "pyarrow == 12.0.0"
+    "pyarrow == 14.0.1"
 ]
 
 [build-system]
